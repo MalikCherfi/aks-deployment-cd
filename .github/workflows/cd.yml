@@ -1,0 +1,100 @@
+name: Build and deploy
+
+on:
+    push:
+        branches: [$default-branch]
+    workflow_dispatch:
+
+env:
+    CONTAINER_NAME: "api"
+    RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+    CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+    KUSTOMIZE_PATH: "."
+
+jobs:
+    deploy:
+        permissions:
+            actions: read
+            contents: read
+            id-token: write
+        runs-on: ubuntu-latest
+        steps:
+            # Checks out the repository this file is in
+            - uses: actions/checkout@v7
+
+            # Logs in with your Azure credentials
+            - name: Azure login
+              uses: azure/login@v3
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            # Get the public IP address of the GitHub Actions runner and whitelist it on AKS
+            - name: Whitelist GitHub Runner IP on AKS
+              run: |
+                  RUNNER_IP=$(curl -s https://api.ipify.org)
+                  echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+                  CURRENT_RANGES=$(az aks show -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --query apiServerAccessProfile.authorizedIpRanges -o tsv | tr '\t' ',')
+
+                  if [ -z "$CURRENT_RANGES" ]; then
+                    NEW_RANGES="${RUNNER_IP}/32"
+                  else
+                    NEW_RANGES="${CURRENT_RANGES},${RUNNER_IP}/32"
+                  fi
+
+                  az aks update -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --api-server-authorized-ip-ranges "$NEW_RANGES"
+
+            # Use kubelogin to configure your kubeconfig for Azure auth
+            - name: Set up kubelogin for non-interactive login
+              uses: azure/use-kubelogin@v1
+              with:
+                  kubelogin-version: "v0.2.19"
+
+            # Retrieves your Azure Kubernetes Service cluster's kubeconfig file
+            - name: Get K8s context
+              uses: azure/aks-set-context@v3
+              with:
+                  resource-group: ${{ env.RESOURCE_GROUP }}
+                  cluster-name: ${{ env.CLUSTER_NAME }}
+                  admin: "false"
+                  use-kubelogin: "true"
+
+            # Runs Kustomize to create manifest files
+            - name: Bake deployment
+              uses: azure/k8s-bake@v2
+              with:
+                  renderEngine: "kustomize"
+                  kustomizationPath: ${{ env.KUSTOMIZE_PATH }}
+                  kubectl-version: latest
+              id: bake
+
+            - name: Retrieve ACR name from ACR tags
+              id: get-acr
+              run: |
+                  ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} \
+                  --query "[?tags.owner=='malik-cherfi'].name" -o tsv)
+                  echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+
+            # Deploys application based on manifest files from previous step
+            - name: Deploy application
+              uses: Azure/k8s-deploy@v4
+              with:
+                  action: deploy
+                  namespace: "demo-app"
+                  manifests: ${{ steps.bake.outputs.manifestsBundle }}
+                  images: |
+                      ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+
+            # Remove GitHub Runner IP from AKS
+            - name: Remove GitHub Runner IP from AKS
+              if: always()
+              run: |
+                  if [ -n "$RUNNER_IP" ]; then
+                      CURRENT_RANGES=$(az aks show -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --query apiServerAccessProfile.authorizedIpRanges -o tsv | tr '\t' ',')
+
+                      CLEANED_RANGES=$(echo "$CURRENT_RANGES" | sed "s/${RUNNER_IP}\/32//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+
+                      az aks update -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --api-server-authorized-ip-ranges "$CLEANED_RANGES"
+                  fi
