@@ -80,12 +80,15 @@ jobs:
                   --query "[?tags.owner=='malik-cherfi'].name" -o tsv)
                   echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
 
-            - name: Replace image placeholder with sed
+            - name: Replace image placeholder for all microservices
               run: |
-                  FULL_IMAGE="${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ matrix.service }}:${{ vars.LAST_BUILD_SHA }}"
-                  echo "Image pour ${{ matrix.service }} : $FULL_IMAGE"
+                  FULL_IMAGE="${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}"
+                  echo "Injection de l'image unique : $FULL_IMAGE"
 
-                  sed -i "s|DOCKER_IMAGE_PLACEHOLDER|$FULL_IMAGE|g" kubernetes/${{ matrix.service }}/deployment.yaml
+                  sed -i "s|DOCKER_IMAGE_PLACEHOLDER|$FULL_IMAGE|g" kubernetes/*/deployment.yaml
+
+                  echo "--- Vérification des images injectées ---"
+                  grep -r "image:" kubernetes/
 
             # Deploys application based on manifest files from previous step
             - name: Deploy application
