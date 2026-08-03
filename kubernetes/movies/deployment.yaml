@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: movies-app
-          image: image
+          image: DOCKER_IMAGE_PLACEHOLDER
           imagePullPolicy: IfNotPresent
           command: ["/app/movies"]
           env:
