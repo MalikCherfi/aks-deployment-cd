@@ -44,7 +44,7 @@ jobs:
 
                   az aks update \
                       --resource-group ${{ env.RESOURCE_GROUP }} \
-                      --name <NOM_DE_TON_CLUSTER> \
+                      --name ${{ env.CLUSTER_NAME }} \
                       --api-server-authorized-ip-ranges "${RUNNER_IP}/32"
 
             # Use kubelogin to configure your kubeconfig for Azure auth
