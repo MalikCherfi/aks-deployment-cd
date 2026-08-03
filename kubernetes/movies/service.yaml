@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: movies-service
+  labels:
+    app.kubernetes.io/name: movies-app
+    app.kubernetes.io/instance: movies-app
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: demo-app
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    app.kubernetes.io/name: movies-app
+    app.kubernetes.io/instance: movies-app
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
