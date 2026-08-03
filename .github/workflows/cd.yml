@@ -77,6 +77,13 @@ jobs:
                   --query "[?tags.owner=='malik-cherfi'].name" -o tsv)
                   echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
 
+            - name: Debug - Afficher l'URL complète de l'image
+              run: |
+                  echo "ACR Name : ${{ steps.get-acr.outputs.acr_name }}"
+                  echo "Container : ${{ env.CONTAINER_NAME }}"
+                  echo "Tag (SHA) : ${{ vars.LAST_BUILD_SHA }}"
+                  echo "URL Image finale : ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}"
+
             # Deploys application based on manifest files from previous step
             - name: Deploy application
               uses: Azure/k8s-deploy@v4
@@ -85,7 +92,7 @@ jobs:
                   namespace: "demo-app"
                   manifests: ${{ steps.bake.outputs.manifestsBundle }}
                   images: |
-                      ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}
+                      image=${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}
 
             # Remove GitHub Runner IP from AKS
             - name: Remove GitHub Runner IP from AKS
