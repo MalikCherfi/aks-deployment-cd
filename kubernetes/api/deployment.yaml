@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: api-app
-          image: image
+          image: DOCKER_IMAGE_PLACEHOLDER
           imagePullPolicy: IfNotPresent
           command: ["/app/api"]
           env:
