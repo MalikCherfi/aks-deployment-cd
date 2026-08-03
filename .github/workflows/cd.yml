@@ -85,7 +85,7 @@ jobs:
                   namespace: "demo-app"
                   manifests: ${{ steps.bake.outputs.manifestsBundle }}
                   images: |
-                      ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+                      ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}
 
             # Remove GitHub Runner IP from AKS
             - name: Remove GitHub Runner IP from AKS
