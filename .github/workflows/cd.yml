@@ -18,9 +18,6 @@ jobs:
             contents: read
             id-token: write
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                service: [api, books, movies]
         steps:
             # Checks out the repository this file is in
             - uses: actions/checkout@v7
