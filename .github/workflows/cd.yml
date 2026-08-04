@@ -83,10 +83,11 @@ jobs:
                   FULL_IMAGE="${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}"
                   echo "Injection de l'image unique : $FULL_IMAGE"
 
-                  sed -i "s|DOCKER_IMAGE_PLACEHOLDER|$FULL_IMAGE|g" kubernetes/*/deployment.yaml
+                  for service in api books movies; do
+                    echo "=== Traitement de ${service} ==="
 
-                  echo "--- Vérification des images injectées ---"
-                  grep -r "image:" kubernetes/
+                    (cd kubernetes/${service} && kustomize edit set image DOCKER_IMAGE_PLACEHOLDER="${FULL_IMAGE}")
+                  done
 
             # Deploys application based on manifest files from previous step
             - name: Deploy application
