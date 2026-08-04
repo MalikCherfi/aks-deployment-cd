@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app-ingress
-  namespace: demo-app
+  namespace: {{ .Values.namespace }}
 spec:
   rules:
     - http:

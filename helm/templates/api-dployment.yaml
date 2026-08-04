@@ -1,38 +1,43 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: movies-app
+  name: api-app
+  namespace: {{ .Values.namespace }}
   labels:
-    app.kubernetes.io/name: movies-app
-    app.kubernetes.io/instance: movies-app
+    app.kubernetes.io/name: api-app
+    app.kubernetes.io/instance: api-app
     app.kubernetes.io/version: "1.14.2"
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: demo-app
-    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: movies-app
-      app.kubernetes.io/instance: movies-app
+      app.kubernetes.io/name: api-app
+      app.kubernetes.io/instance: api-app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: movies-app
-        app.kubernetes.io/instance: movies-app
+        app.kubernetes.io/name: api-app
+        app.kubernetes.io/instance: api-app
         app.kubernetes.io/version: "1.14.2"
         app.kubernetes.io/component: backend
         app.kubernetes.io/part-of: demo-app
-        app.kubernetes.io/managed-by: kustomize
+        app.kubernetes.io/managed-by: Helm
     spec:
       containers:
-        - name: movies-app
-          image: DOCKER_IMAGE_PLACEHOLDER
+        - name: api-app
+          image: "{{ .Values.acrName }}.azurecr.io/api:{{ .Values.imageTag }}"
           imagePullPolicy: IfNotPresent
-          command: ["/app/movies"]
+          command: ["/app/api"]
           env:
             - name: PORT
               value: "8081"
+            - name: BOOKS_API_HOST
+              value: "books-service.demo-app:8081"
+            - name: MOVIES_API_HOST
+              value: "movies-service.demo-app:8081"
           ports:
             - name: http
               containerPort: 8081
@@ -42,14 +47,12 @@ spec:
               port: http
             failureThreshold: 1
             periodSeconds: 10
-
           startupProbe:
             httpGet:
               path: /healthz
               port: http
             failureThreshold: 30
             periodSeconds: 10
-
           readinessProbe:
             httpGet:
               path: /healthz

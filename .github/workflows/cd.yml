@@ -62,6 +62,7 @@ jobs:
                   admin: "false"
                   use-kubelogin: "true"
 
+            # Retrieve ACR name
             - name: Retrieve ACR name from ACR tags
               id: get-acr
               run: |
@@ -69,27 +70,17 @@ jobs:
                   --query "[?tags.owner=='malik-cherfi'].name" -o tsv)
                   echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
 
-            - name: Replace image placeholder for all microservices
-              run: |
-                  FULL_IMAGE="${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}"
-                  echo "Injection de l'image unique : $FULL_IMAGE"
-
-                  for service in api books movies; do
-                    echo "=== Traitement de ${service} ==="
-
-                    (cd kubernetes/${service} && kustomize edit set image DOCKER_IMAGE_PLACEHOLDER="${FULL_IMAGE}")
-                  done
-
-                  kubectl apply -k . -n demo-app
-
-            # Runs Kustomize to create manifest files
-            - name: Bake deployment
+            # Bake Helm Chart vers un manifest bundle unique
+            - name: Bake Manifests with Helm
               uses: azure/k8s-bake@v2
-              with:
-                  renderEngine: "kustomize"
-                  kustomizationPath: ${{ env.KUSTOMIZE_PATH }}
-                  kubectl-version: latest
               id: bake
+              with:
+                  renderEngine: "helm"
+                  helmChart: "./helm"
+                  helm-version: "latest"
+                  overrides: |
+                      acrName:${{ steps.get-acr.outputs.acr_name }}
+                      imageTag:${{ vars.LAST_BUILD_SHA }}
 
             # Deploys application based on manifest files from previous step
             - name: Deploy application
@@ -98,8 +89,6 @@ jobs:
                   action: deploy
                   namespace: "demo-app"
                   manifests: ${{ steps.bake.outputs.manifestsBundle }}
-                  images: |
-                      image=${{ steps.get-acr.outputs.acr_name }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ vars.LAST_BUILD_SHA }}
 
             # Remove GitHub Runner IP from AKS
             - name: Remove GitHub Runner IP from AKS

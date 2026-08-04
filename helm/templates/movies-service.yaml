@@ -2,12 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: movies-service
+  namespace: {{ .Values.namespace }}
   labels:
     app.kubernetes.io/name: movies-app
     app.kubernetes.io/instance: movies-app
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: demo-app
-    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/managed-by: Helm
 spec:
   selector:
     app.kubernetes.io/name: movies-app

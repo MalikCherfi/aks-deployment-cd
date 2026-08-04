@@ -2,13 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: books-app
+  namespace: {{ .Values.namespace }}
   labels:
     app.kubernetes.io/name: books-app
     app.kubernetes.io/instance: books-app
     app.kubernetes.io/version: "1.14.2"
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: demo-app
-    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   selector:
@@ -23,11 +24,11 @@ spec:
         app.kubernetes.io/version: "1.14.2"
         app.kubernetes.io/component: backend
         app.kubernetes.io/part-of: demo-app
-        app.kubernetes.io/managed-by: kustomize
+        app.kubernetes.io/managed-by: Helm
     spec:
       containers:
         - name: books-app
-          image: DOCKER_IMAGE_PLACEHOLDER
+          image: "{{ .Values.acrName }}.azurecr.io/books:{{ .Values.imageTag }}"
           imagePullPolicy: IfNotPresent
           command: ["/app/books"]
           env:
@@ -42,14 +43,12 @@ spec:
               port: http
             failureThreshold: 1
             periodSeconds: 10
-
           startupProbe:
             httpGet:
               path: /healthz
               port: http
             failureThreshold: 30
             periodSeconds: 10
-
           readinessProbe:
             httpGet:
               path: /healthz
