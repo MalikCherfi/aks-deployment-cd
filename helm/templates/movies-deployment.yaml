@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: movies-app
-          image: "{{ .Values.acrName }}.azurecr.io/movies:{{ .Values.imageTag }}"
+          image: "{{ .Values.acrName }}.azurecr.io/api:{{ .Values.imageTag }}"
           imagePullPolicy: IfNotPresent
           command: ["/app/movies"]
           env:
