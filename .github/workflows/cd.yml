@@ -62,15 +62,6 @@ jobs:
                   admin: "false"
                   use-kubelogin: "true"
 
-            # Runs Kustomize to create manifest files
-            - name: Bake deployment
-              uses: azure/k8s-bake@v2
-              with:
-                  renderEngine: "kustomize"
-                  kustomizationPath: ${{ env.KUSTOMIZE_PATH }}
-                  kubectl-version: latest
-              id: bake
-
             - name: Retrieve ACR name from ACR tags
               id: get-acr
               run: |
@@ -89,7 +80,16 @@ jobs:
                     (cd kubernetes/${service} && kustomize edit set image DOCKER_IMAGE_PLACEHOLDER="${FULL_IMAGE}")
                   done
 
-                  kubectl apply -k kubernetes -n demo-app
+                  kubectl apply -k . -n demo-app
+
+            # Runs Kustomize to create manifest files
+            - name: Bake deployment
+              uses: azure/k8s-bake@v2
+              with:
+                  renderEngine: "kustomize"
+                  kustomizationPath: ${{ env.KUSTOMIZE_PATH }}
+                  kubectl-version: latest
+              id: bake
 
             # Deploys application based on manifest files from previous step
             - name: Deploy application
