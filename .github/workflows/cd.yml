@@ -89,6 +89,8 @@ jobs:
                     (cd kubernetes/${service} && kustomize edit set image DOCKER_IMAGE_PLACEHOLDER="${FULL_IMAGE}")
                   done
 
+                  kubectl apply -k kubernetes -n demo-app
+
             # Deploys application based on manifest files from previous step
             - name: Deploy application
               uses: Azure/k8s-deploy@v4
