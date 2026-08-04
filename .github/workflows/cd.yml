@@ -31,21 +31,27 @@ jobs:
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
             # Get the public IP address of the GitHub Actions runner and whitelist it on AKS
-            - name: Whitelist Runner IP on AKS
+            - name: Add GitHub Runner IP to existing AKS ranges
               run: |
-                  RUNNER_IP=$(curl -4 -s --fail --retry 3 https://api.ipify.org)
+                  RUNNER_IP=$(curl -4 -s ifconfig.me)
 
-                  if [ -z "$RUNNER_IP" ]; then
-                      echo "Erreur : impossible de récupérer l'IP du runner."
-                      exit 1
+                  EXISTING_RANGES=$(az aks show \
+                      --resource-group ${{ env.RESOURCE_GROUP }} \
+                      --name ${{ env.CLUSTER_NAME }} \
+                      --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv | paste -sd, -)
+
+                  if [ -z "$EXISTING_RANGES" ]; then
+                      TARGET_RANGES="${RUNNER_IP}/32"
+                  else
+                      TARGET_RANGES="${EXISTING_RANGES},${RUNNER_IP}/32"
                   fi
 
-                  echo "IP du runner GitHub : $RUNNER_IP"
+                  echo "IPs autorisées : ${TARGET_RANGES}"
 
                   az aks update \
                       --resource-group ${{ env.RESOURCE_GROUP }} \
                       --name ${{ env.CLUSTER_NAME }} \
-                      --api-server-authorized-ip-ranges "${RUNNER_IP}/32"
+                      --api-server-authorized-ip-ranges "${TARGET_RANGES}"
 
             # Use kubelogin to configure your kubeconfig for Azure auth
             - name: Set up kubelogin for non-interactive login
@@ -90,14 +96,21 @@ jobs:
                   namespace: "demo-app"
                   manifests: ${{ steps.bake.outputs.manifestsBundle }}
 
-            # Remove GitHub Runner IP from AKS
             - name: Remove GitHub Runner IP from AKS
               if: always()
               run: |
-                  if [ -n "$RUNNER_IP" ]; then
-                      CURRENT_RANGES=$(az aks show -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --query apiServerAccessProfile.authorizedIpRanges -o tsv | tr '\t' ',')
+                  RUNNER_IP=$(curl -4 -s ifconfig.me)
 
-                      CLEANED_RANGES=$(echo "$CURRENT_RANGES" | sed "s/${RUNNER_IP}\/32//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+                  CURRENT_RANGES=$(az aks show \
+                      -g ${{ env.RESOURCE_GROUP }} \
+                      -n ${{ env.CLUSTER_NAME }} \
+                      --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv)
 
-                      az aks update -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --api-server-authorized-ip-ranges "$CLEANED_RANGES"
-                  fi
+                  CLEANED_RANGES=$(echo "$CURRENT_RANGES" | grep -v "^${RUNNER_IP}/32$" | paste -sd, -)
+
+                  echo "IPs conservées : ${CLEANED_RANGES}"
+
+                  az aks update \
+                      -g ${{ env.RESOURCE_GROUP }} \
+                      -n ${{ env.CLUSTER_NAME }} \
+                      --api-server-authorized-ip-ranges "$CLEANED_RANGES"
