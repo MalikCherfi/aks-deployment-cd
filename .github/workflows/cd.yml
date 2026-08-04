@@ -6,10 +6,8 @@ on:
     workflow_dispatch:
 
 env:
-    CONTAINER_NAME: "api"
     RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
     CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
-    KUSTOMIZE_PATH: "."
 
 jobs:
     deploy:
