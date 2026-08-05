@@ -53,3 +53,15 @@ Ce dépôt contient l'architecture et les workflows de déploiement continu (CD)
 | Nom | Description |
 |---|---|
 | `LAST_BUILD_SHA` | Tag du dernier commit (`github.sha`) compilé par la CI et prêt à être déployé |
+
+---
+
+## Endpoints & Vérification
+
+Une fois l'application déployée et accessible via le Load Balancer, les routes suivantes peuvent être testées :
+
+| Route | Description | Exemple d'utilisation |
+|---|---|---|
+| `/healthz` | Probe de santé du service (`status: ok`) | `curl http://40.114.181.10/healthz` |
+| `/test` | Route de vérification visuelle (Art ASCII) | `curl http://40.114.181.10/test` |
+| `/data` | Endpoint principal de données de l'API | `curl http://40.114.181.10/data` |
