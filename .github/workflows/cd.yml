@@ -15,7 +15,7 @@ jobs:
             actions: read
             contents: read
             id-token: write
-        runs-on: ubuntu-latest
+        runs-on: arc-runner-set
         steps:
             - uses: actions/checkout@v7
             - name: Azure login
@@ -26,27 +26,27 @@ jobs:
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
             # Get the public IP address of the GitHub Actions runner and whitelist it on AKS
-            - name: Add GitHub Runner IP to existing AKS ranges
-              run: |
-                  RUNNER_IP=$(curl -4 -s ifconfig.me)
+            # - name: Add GitHub Runner IP to existing AKS ranges
+            #   run: |
+            #       RUNNER_IP=$(curl -4 -s ifconfig.me)
 
-                  EXISTING_RANGES=$(az aks show \
-                      --resource-group ${{ env.RESOURCE_GROUP }} \
-                      --name ${{ env.CLUSTER_NAME }} \
-                      --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv | paste -sd, -)
+            #       EXISTING_RANGES=$(az aks show \
+            #           --resource-group ${{ env.RESOURCE_GROUP }} \
+            #           --name ${{ env.CLUSTER_NAME }} \
+            #           --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv | paste -sd, -)
 
-                  if [ -z "$EXISTING_RANGES" ]; then
-                      TARGET_RANGES="${RUNNER_IP}/32"
-                  else
-                      TARGET_RANGES="${EXISTING_RANGES},${RUNNER_IP}/32"
-                  fi
+            #       if [ -z "$EXISTING_RANGES" ]; then
+            #           TARGET_RANGES="${RUNNER_IP}/32"
+            #       else
+            #           TARGET_RANGES="${EXISTING_RANGES},${RUNNER_IP}/32"
+            #       fi
 
-                  echo "IPs autorisées : ${TARGET_RANGES}"
+            #       echo "IPs autorisées : ${TARGET_RANGES}"
 
-                  az aks update \
-                      --resource-group ${{ env.RESOURCE_GROUP }} \
-                      --name ${{ env.CLUSTER_NAME }} \
-                      --api-server-authorized-ip-ranges "${TARGET_RANGES}"
+            #       az aks update \
+            #           --resource-group ${{ env.RESOURCE_GROUP }} \
+            #           --name ${{ env.CLUSTER_NAME }} \
+            #           --api-server-authorized-ip-ranges "${TARGET_RANGES}"
 
             # Use kubelogin to configure your kubeconfig for Azure auth
             - name: Set up kubelogin for non-interactive login
@@ -97,21 +97,21 @@ jobs:
                   images: |
                       ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/api:${{ vars.LAST_BUILD_SHA }}
 
-            - name: Remove GitHub Runner IP from AKS
-              if: always()
-              run: |
-                  RUNNER_IP=$(curl -4 -s ifconfig.me)
+            # - name: Remove GitHub Runner IP from AKS
+            #   if: always()
+            #   run: |
+            #       RUNNER_IP=$(curl -4 -s ifconfig.me)
 
-                  CURRENT_RANGES=$(az aks show \
-                      -g ${{ env.RESOURCE_GROUP }} \
-                      -n ${{ env.CLUSTER_NAME }} \
-                      --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv)
+            #       CURRENT_RANGES=$(az aks show \
+            #           -g ${{ env.RESOURCE_GROUP }} \
+            #           -n ${{ env.CLUSTER_NAME }} \
+            #           --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv)
 
-                  CLEANED_RANGES=$(echo "$CURRENT_RANGES" | grep -v "^${RUNNER_IP}/32$" | paste -sd, -)
+            #       CLEANED_RANGES=$(echo "$CURRENT_RANGES" | grep -v "^${RUNNER_IP}/32$" | paste -sd, -)
 
-                  echo "IPs conservées : ${CLEANED_RANGES}"
+            #       echo "IPs conservées : ${CLEANED_RANGES}"
 
-                  az aks update \
-                      -g ${{ env.RESOURCE_GROUP }} \
-                      -n ${{ env.CLUSTER_NAME }} \
-                      --api-server-authorized-ip-ranges "$CLEANED_RANGES"
+            #       az aks update \
+            #           -g ${{ env.RESOURCE_GROUP }} \
+            #           -n ${{ env.CLUSTER_NAME }} \
+            #           --api-server-authorized-ip-ranges "$CLEANED_RANGES"
