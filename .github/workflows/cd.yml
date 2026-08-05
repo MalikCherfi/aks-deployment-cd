@@ -1,8 +1,6 @@
 name: Deploy
 
 on:
-    push:
-        branches: [main]
     workflow_dispatch:
 
 env:
@@ -24,29 +22,6 @@ jobs:
                   client-id: ${{ secrets.AZURE_CLIENT_ID }}
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-            # Get the public IP address of the GitHub Actions runner and whitelist it on AKS
-            # - name: Add GitHub Runner IP to existing AKS ranges
-            #   run: |
-            #       RUNNER_IP=$(curl -4 -s ifconfig.me)
-
-            #       EXISTING_RANGES=$(az aks show \
-            #           --resource-group ${{ env.RESOURCE_GROUP }} \
-            #           --name ${{ env.CLUSTER_NAME }} \
-            #           --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv | paste -sd, -)
-
-            #       if [ -z "$EXISTING_RANGES" ]; then
-            #           TARGET_RANGES="${RUNNER_IP}/32"
-            #       else
-            #           TARGET_RANGES="${EXISTING_RANGES},${RUNNER_IP}/32"
-            #       fi
-
-            #       echo "IPs autorisées : ${TARGET_RANGES}"
-
-            #       az aks update \
-            #           --resource-group ${{ env.RESOURCE_GROUP }} \
-            #           --name ${{ env.CLUSTER_NAME }} \
-            #           --api-server-authorized-ip-ranges "${TARGET_RANGES}"
 
             # Use kubelogin to configure your kubeconfig for Azure auth
             - name: Set up kubelogin for non-interactive login
@@ -71,10 +46,6 @@ jobs:
                   --query "[?tags.owner=='malik-cherfi'].name" -o tsv)
                   echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
 
-            # - name: Log in to Azure Container Registry
-            #   run: |
-            #       az acr login --name ${{ steps.get-acr.outputs.acr_name }}
-
             # Bake Helm Chart vers un manifest bundle unique
             - name: Bake Manifests with Helm
               uses: azure/k8s-bake@v2
@@ -96,22 +67,3 @@ jobs:
                   manifests: ${{ steps.bake.outputs.manifestsBundle }}
                   images: |
                       ${{ steps.get-acr.outputs.acr_name }}.azurecr.io/api:${{ vars.LAST_BUILD_SHA }}
-
-            # - name: Remove GitHub Runner IP from AKS
-            #   if: always()
-            #   run: |
-            #       RUNNER_IP=$(curl -4 -s ifconfig.me)
-
-            #       CURRENT_RANGES=$(az aks show \
-            #           -g ${{ env.RESOURCE_GROUP }} \
-            #           -n ${{ env.CLUSTER_NAME }} \
-            #           --query "apiServerAccessProfile.authorizedIpRanges[]" -o tsv)
-
-            #       CLEANED_RANGES=$(echo "$CURRENT_RANGES" | grep -v "^${RUNNER_IP}/32$" | paste -sd, -)
-
-            #       echo "IPs conservées : ${CLEANED_RANGES}"
-
-            #       az aks update \
-            #           -g ${{ env.RESOURCE_GROUP }} \
-            #           -n ${{ env.CLUSTER_NAME }} \
-            #           --api-server-authorized-ip-ranges "$CLEANED_RANGES"
