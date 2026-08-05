@@ -2,7 +2,7 @@ name: Deploy
 
 on:
     push:
-        branches: [$default-branch]
+        branches: [main]
     workflow_dispatch:
 
 env:
@@ -17,10 +17,7 @@ jobs:
             id-token: write
         runs-on: ubuntu-latest
         steps:
-            # Checks out the repository this file is in
             - uses: actions/checkout@v7
-
-            # Logs in with your Azure credentials
             - name: Azure login
               uses: azure/login@v3
               with:
